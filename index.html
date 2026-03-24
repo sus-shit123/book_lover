@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Her Private Library</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Pinyon+Script&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --cream: #f5efe6;
+    --parchment: #ede3d3;
+    --warm: #d4b896;
+    --amber: #c9924a;
+    --rose: #b5556a;
+    --burgundy: #7a2840;
+    --deep: #3a1a24;
+    --ink: #2c1810;
+    --gold: #d4a843;
+    --muted: #9b7b6a;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: 'EB Garamond', serif;
+    background: var(--cream);
+    color: var(--ink);
+    overflow-x: hidden;
+  }
+
+  /* ─── NOISE TEXTURE OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.6;
+  }
+
+  /* ─── PAGES ─── */
+  .page { display: none; min-height: 100vh; }
+  .page.active { display: flex; }
+
+  /* ═══════════════════════════════════════
+     PASSWORD PAGE
+  ═══════════════════════════════════════ */
+  #page-password {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--deep);
+    position: relative;
+    overflow: hidden;
+  }
+
+  #page-password::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 50% 60%, rgba(180,85,106,0.18) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 30% at 20% 20%, rgba(212,168,67,0.08) 0%, transparent 60%);
+  }
+
+  .lock-icon {
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.7;
+    animation: breathe 4s ease-in-out infinite;
+  }
+
+  @keyframes breathe {
+    0%,100% { transform: scale(1); opacity: 0.7; }
+    50% { transform: scale(1.05); opacity: 1; }
+  }
+
+  .pw-title {
+    font-family: 'Pinyon Script', cursive;
+    font-size: clamp(2.5rem, 7vw, 5rem);
+    color: var(--warm);
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+
+  .pw-subtitle {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 1.05rem;
+    margin-bottom: 3rem;
+    letter-spacing: 0.08em;
+  }
+
+  .pw-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    z-index: 1;
+  }
+
+  .pw-input {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(212,184,150,0.3);
+    border-radius: 2px;
+    padding: 0.85rem 2rem;
+    font-family: 'EB Garamond', serif;
+    font-size: 1.1rem;
+    color: var(--cream);
+    text-align: center;
+    letter-spacing: 0.2em;
+    width: 260px;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .pw-input::placeholder { color: rgba(212,184,150,0.4); letter-spacing: 0.1em; font-style: italic; }
+  .pw-input:focus { border-color: rgba(212,168,67,0.6); box-shadow: 0 0 20px rgba(212,168,67,0.1); }
+
+  .pw-btn {
+    background: transparent;
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 0.7rem 2.5rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 1px;
+  }
+
+  .pw-btn:hover { background: var(--amber); color: var(--deep); }
+
+  .pw-error {
+    color: var(--rose);
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 0.95rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+    height: 1.2rem;
+  }
+  .pw-error.show { opacity: 1; }
+
+  .pw-hint {
+    position: absolute;
+    bottom: 2rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: rgba(212,184,150,0.3);
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+  }
+
+  /* floating petals */
+  .petal {
+    position: absolute;
+    width: 6px;
+    height: 10px;
+    border-radius: 50% 0 50% 0;
+    opacity: 0;
+    animation: fall linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes fall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.4; }
+    90% { opacity: 0.2; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+
+  /* ═══════════════════════════════════════
+     WELCOME PAGE
+  ═══════════════════════════════════════ */
+  #page-welcome {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 40%, rgba(181,85,106,0.08) 0%, transparent 70%),
+      var(--cream);
+    text-align: center;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #page-welcome::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 200px;
+    background: linear-gradient(to top, var(--parchment), transparent);
+    pointer-events: none;
+  }
+
+  .welcome-deco {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    animation: fadeUp 1s ease both;
+    opacity: 0.5;
+  }
+
+  .welcome-greeting {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 1.1rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    animation: fadeUp 1s 0.2s ease both;
+    opacity: 0;
+  }
+
+  .welcome-name {
+    font-family: 'Pinyon Script', cursive;
+    font-size: clamp(4rem, 12vw, 9rem);
+    color: var(--burgundy);
+    line-height: 0.9;
+    margin-bottom: 1.5rem;
+    animation: fadeUp 1.2s 0.4s ease both;
+    opacity: 0;
+  }
+
+  .welcome-divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    animation: fadeUp 1s 0.6s ease both;
+    opacity: 0;
+  }
+
+  .welcome-divider::before,
+  .welcome-divider::after {
+    content: '';
+    width: 60px;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--amber));
+  }
+  .welcome-divider::after { background: linear-gradient(to left, transparent, var(--amber)); }
+
+  .welcome-quote {
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    font-size: clamp(1.1rem, 3vw, 1.5rem);
+    color: var(--deep);
+    max-width: 500px;
+    line-height: 1.7;
+    margin-bottom: 3rem;
+    animation: fadeUp 1s 0.8s ease both;
+    opacity: 0;
+  }
+
+  .enter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.8rem;
+    background: var(--burgundy);
+    color: var(--cream);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 1rem 3rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.4s;
+    border-radius: 1px;
+    animation: fadeUp 1s 1s ease both;
+    opacity: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .enter-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--rose);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+  }
+
+  .enter-btn:hover::before { transform: scaleX(1); }
+  .enter-btn span { position: relative; z-index: 1; }
+  .enter-btn:hover { box-shadow: 0 8px 30px rgba(122,40,64,0.3); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ═══════════════════════════════════════
+     LIBRARY PAGE
+  ═══════════════════════════════════════ */
+  #page-library {
+    flex-direction: column;
+    min-height: 100vh;
+    background: var(--cream);
+  }
+
+  /* top shelf decoration */
+  .shelf-header {
+    background: var(--deep);
+    padding: 2.5rem 3rem 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shelf-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 50% 100% at 80% 50%, rgba(181,85,106,0.15) 0%, transparent 70%);
+  }
+
+  .shelf-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    position: relative;
+  }
+
+  .back-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .back-btn:hover { color: var(--warm); }
+
+  .shelf-title-small {
+    font-family: 'Pinyon Script', cursive;
+    font-size: 2rem;
+    color: var(--warm);
+  }
+
+  .miss-btn {
+    background: transparent;
+    border: 1px solid rgba(181,85,106,0.4);
+    color: var(--rose);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.5rem 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 1px;
+  }
+  .miss-btn:hover { background: rgba(181,85,106,0.15); border-color: var(--rose); }
+
+  .shelf-tagline {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 1rem;
+    letter-spacing: 0.05em;
+    position: relative;
+  }
+
+  /* Book grid */
+  .library-body {
+    padding: 3rem 2.5rem;
+    flex: 1;
+  }
+
+  .section-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, var(--warm), transparent);
+    max-width: 200px;
+  }
+
+  .books-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 2rem;
+    max-width: 1100px;
+  }
+
+  /* ── BOOK CARD ── */
+  .book-card {
+    cursor: pointer;
+    transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    animation: cardAppear 0.6s ease both;
+  }
+
+  @keyframes cardAppear {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .book-card:hover { transform: translateY(-8px); }
+
+  .book-cover {
+    width: 100%;
+    aspect-ratio: 3/4;
+    border-radius: 3px 8px 8px 3px;
+    position: relative;
+    overflow: hidden;
+    box-shadow:
+      -4px 4px 0 rgba(0,0,0,0.15),
+      0 10px 30px rgba(0,0,0,0.15),
+      inset -3px 0 8px rgba(0,0,0,0.12);
+    transition: box-shadow 0.4s;
+  }
+
+  .book-card:hover .book-cover {
+    box-shadow: -5px 6px 0 rgba(0,0,0,0.2), 0 20px 50px rgba(0,0,0,0.2), inset -3px 0 8px rgba(0,0,0,0.12);
+  }
+
+  .book-spine {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 20px;
+    background: rgba(0,0,0,0.2);
+    z-index: 2;
+  }
+
+  .book-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .book-cover-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(160deg, transparent 40%, rgba(0,0,0,0.4) 100%);
+  }
+
+  .book-emoji-cover {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .book-emoji {
+    font-size: 3rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+  }
+
+  .book-cover-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: rgba(255,255,255,0.9);
+    font-size: 1.05rem;
+    line-height: 1.3;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+
+  .book-tag {
+    position: absolute;
+    top: 1rem;
+    right: 0.8rem;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.8);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border-radius: 1px;
+  }
+
+  .book-info {
+    padding: 0.8rem 0 0 1.2rem;
+  }
+
+  .book-info-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--deep);
+    margin-bottom: 0.15rem;
+  }
+
+  .book-info-sub {
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  /* ═══════════════════════════════════════
+     LETTER / STORY PAGE
+  ═══════════════════════════════════════ */
+  #page-letter {
+    flex-direction: column;
+    min-height: 100vh;
+    background: var(--parchment);
+    align-items: center;
+    padding-bottom: 4rem;
+  }
+
+  .letter-header {
+    width: 100%;
+    background: var(--deep);
+    padding: 1.5rem 3rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .letter-back {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .letter-back:hover { color: var(--warm); }
+
+  .letter-paper {
+    background: #faf6ef;
+    max-width: 680px;
+    width: calc(100% - 3rem);
+    margin: 3rem auto;
+    padding: 4rem 4.5rem;
+    box-shadow: 0 4px 40px rgba(0,0,0,0.1), 0 1px 4px rgba(0,0,0,0.05);
+    border-radius: 2px;
+    position: relative;
+    animation: paperReveal 0.6s ease both;
+  }
+
+  @keyframes paperReveal {
+    from { opacity: 0; transform: translateY(20px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* paper lines */
+  .letter-paper::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      transparent,
+      transparent 31px,
+      rgba(184,160,130,0.15) 31px,
+      rgba(184,160,130,0.15) 32px
+    );
+    background-position: 0 4.5rem;
+    pointer-events: none;
+    border-radius: 2px;
+  }
+
+  /* red margin line */
+  .letter-paper::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 5rem;
+    width: 1px;
+    height: 100%;
+    background: rgba(181,85,106,0.2);
+    pointer-events: none;
+  }
+
+  .letter-tag-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 1.5rem;
+  }
+
+  .letter-title {
+    font-family: 'Pinyon Script', cursive;
+    font-size: clamp(2.5rem, 7vw, 4.5rem);
+    color: var(--burgundy);
+    margin-bottom: 0.5rem;
+    line-height: 1;
+  }
+
+  .letter-date {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(184,160,130,0.3);
+  }
+
+  .letter-body {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.15rem;
+    line-height: 2;
+    color: var(--ink);
+  }
+
+  .letter-body p { margin-bottom: 1.5rem; }
+
+  .letter-signature {
+    font-family: 'Pinyon Script', cursive;
+    font-size: 2.5rem;
+    color: var(--burgundy);
+    margin-top: 2rem;
+    text-align: right;
+  }
+
+  /* ═══════════════════════════════════════
+     MISS ME MODAL
+  ═══════════════════════════════════════ */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(30,10,20,0.85);
+    backdrop-filter: blur(6px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .miss-modal {
+    background: var(--deep);
+    border: 1px solid rgba(212,184,150,0.2);
+    border-radius: 4px;
+    padding: 3rem 3.5rem;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+    position: relative;
+    animation: modalPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+
+  @keyframes modalPop {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .miss-heart {
+    font-size: 4rem;
+    display: block;
+    margin-bottom: 1.5rem;
+    animation: heartbeat 1.2s ease infinite;
+  }
+
+  @keyframes heartbeat {
+    0%,100% { transform: scale(1); }
+    30% { transform: scale(1.2); }
+    60% { transform: scale(1.1); }
+  }
+
+  .miss-title {
+    font-family: 'Pinyon Script', cursive;
+    font-size: 3rem;
+    color: var(--warm);
+    margin-bottom: 1rem;
+  }
+
+  .miss-message {
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    font-size: 1.15rem;
+    color: rgba(212,184,150,0.8);
+    line-height: 1.8;
+    margin-bottom: 2rem;
+  }
+
+  .miss-close {
+    background: transparent;
+    border: 1px solid rgba(212,184,150,0.3);
+    color: var(--muted);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 0.6rem 2rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 1px;
+  }
+  .miss-close:hover { border-color: var(--warm); color: var(--warm); }
+
+  /* falling hearts */
+  .heart-particle {
+    position: fixed;
+    font-size: 1.2rem;
+    pointer-events: none;
+    animation: floatHeart 3s ease forwards;
+    z-index: 1001;
+  }
+
+  @keyframes floatHeart {
+    0% { opacity: 1; transform: translateY(0) rotate(0deg) scale(0.5); }
+    100% { opacity: 0; transform: translateY(-200px) rotate(30deg) scale(1.2); }
+  }
+
+  /* ═══════════════════════════════════════
+     RESPONSIVE
+  ═══════════════════════════════════════ */
+  @media (max-width: 600px) {
+    .letter-paper { padding: 2.5rem 1.8rem 2.5rem 2.2rem; }
+    .letter-paper::after { left: 2.5rem; }
+    .shelf-header { padding: 2rem 1.5rem 1.5rem; }
+    .library-body { padding: 2rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+  PAGE 1: PASSWORD
+════════════════════════════════════════ -->
+<section id="page-password" class="page active">
+  <div class="lock-icon">🔐</div>
+  <h1 class="pw-title">Our Little Library</h1>
+  <p class="pw-subtitle">A private world, made just for you</p>
+  <div class="pw-box">
+    <input type="password" class="pw-input" id="pw-input" placeholder="enter your secret word" maxlength="30">
+    <div class="pw-error" id="pw-error">That's not quite right, my love ✦</div>
+    <button class="pw-btn" onclick="checkPassword()">Open the Door →</button>
+  </div>
+  <p class="pw-hint">only you know the way in</p>
+</section>
+
+<!-- ════════════════════════════════════════
+  PAGE 2: WELCOME
+════════════════════════════════════════ -->
+<section id="page-welcome" class="page">
+  <div class="welcome-deco">✦ ✦ ✦</div>
+  <p class="welcome-greeting">Welcome to your world</p>
+  <h1 class="welcome-name" id="welcome-name">Aanya</h1>
+  <div class="welcome-divider">❧</div>
+  <p class="welcome-quote">
+    "Between these pages live every feeling I couldn't say out loud —<br>written only for you, kept only by you."
+  </p>
+  <button class="enter-btn" onclick="showLibrary()">
+    <span>Enter Your Library →</span>
+  </button>
+</section>
+
+<!-- ════════════════════════════════════════
+  PAGE 3: LIBRARY
+════════════════════════════════════════ -->
+<section id="page-library" class="page">
+  <div class="shelf-header">
+    <div class="shelf-nav">
+      <button class="back-btn" onclick="showPage('page-welcome')">← Back</button>
+      <span class="shelf-title-small">Her Private Library</span>
+      <button class="miss-btn" onclick="openMissModal()">💌 Miss me?</button>
+    </div>
+    <p class="shelf-tagline">Every book here is a piece of us. Pick one up.</p>
+  </div>
+
+  <div class="library-body">
+    <p class="section-label">Your Collection</p>
+    <div class="books-grid" id="books-grid">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+  PAGE 4: LETTER / STORY
+════════════════════════════════════════ -->
+<section id="page-letter" class="page">
+  <div class="letter-header">
+    <button class="letter-back" onclick="showPage('page-library')">← Back to Library</button>
+    <span class="shelf-title-small" style="color:var(--warm)">Her Private Library</span>
+    <div style="width:100px"></div>
+  </div>
+
+  <div class="letter-paper" id="letter-paper">
+    <p class="letter-tag-label" id="letter-tag">Memory</p>
+    <h2 class="letter-title" id="letter-title">Title</h2>
+    <p class="letter-date" id="letter-date">Date</p>
+    <div class="letter-body" id="letter-body"></div>
+    <p class="letter-signature" id="letter-sig">— yours</p>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════
+  MISS ME MODAL
+════════════════════════════════════════ -->
+<div class="modal-overlay" id="miss-modal">
+  <div class="miss-modal">
+    <span class="miss-heart">💗</span>
+    <h2 class="miss-title">I miss you too</h2>
+    <p class="miss-message" id="miss-msg">
+      Close your eyes for a second.<br>
+      That warmth you feel? That's me thinking of you,<br>
+      somewhere across the distance, at this very moment.
+    </p>
+    <button class="miss-close" onclick="closeMissModal()">Hold me close →</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════
+// ✏️  CUSTOMIZE EVERYTHING HERE
+// ════════════════════════════════════
+
+const CONFIG = {
+  password: "27052008",        // 🔐 Change this password
+  herName:  "Rishu💛",           // 💛 Her name (shown on welcome page)
+  yourName: "Het",   // ✍️  Your signature at end of letters
+
+  // 💌 "Miss Me" messages – one picked randomly each time
+  missMessages: [
+    "Close your eyes for a second.\nThat warmth you feel? That's me thinking of you,\nsomewhere across the distance, at this very moment.",
+    "Even when I'm not there,\nI'm still the one who notices when you're quiet.\nI see you. Always.",
+    "Distance is just a number.\nYou live permanently in my chest, rent-free,\nand I wouldn't have it any other way.",
+    "Missing you is my favourite kind of ache.\nIt reminds me how real this is."
+  ],
+};
+
+// ════════════════════════════════════
+// 📚  YOUR BOOKS / MEMORIES / LETTERS
+//     Add, edit, or remove as many as you like!
+// ════════════════════════════════════
+
+const books = [
+  {
+    tag: "Memory",
+    title: "The Day We Met",
+    subtitle: "Chapter One of Us",
+    date: "The day everything changed",
+    // Cover color (CSS gradient) — change freely
+    coverGradient: "linear-gradient(135deg, #7a2840 0%, #b5556a 100%)",
+    emoji: "🌹",
+    content: [
+      `I didn't know it then — but that day rewrote everything. The way you tucked your hair. The way you laughed at something that wasn't even that funny. I was trying to play it cool and absolutely failing.`,
+      `There's this quiet version of that memory I keep: just us, the chaos of the world around us, and somehow this tiny bubble of calm in the middle of it. That bubble had your name on it.`,
+      `I've replayed that day more times than I'd ever admit out loud. But now I don't have to pretend I haven't — because this is just for you.`
+    ]
+  },
+  {
+    tag: "Letter",
+    title: "Things I Never Said",
+    subtitle: "A letter, long overdue",
+    date: "Written on a quiet night",
+    coverGradient: "linear-gradient(135deg, #2c4a6e 0%, #5b8db8 100%)",
+    emoji: "💌",
+    content: [
+      `There are things I think about you at 2am that I never say in the daylight. About how proud I am of the way you handle things. About how you make ordinary moments feel important just by being in them.`,
+      `I never say it enough: you are genuinely one of the most remarkable people I have ever met. Not because of the big things — but because of the quiet, consistent, real things you do every day.`,
+      `So here it is, written down, permanent: I see you. I choose you. And I'm so glad you exist.`
+    ]
+  },
+  {
+    tag: "Story",
+    title: "Your Smile > Everything",
+    subtitle: "A small truth, told honestly",
+    date: "Always",
+    coverGradient: "linear-gradient(135deg, #5a3a1a 0%, #c9924a 100%)",
+    emoji: "✨",
+    content: [
+      `Scientists probably have a name for what your smile does to a room. Some kind of gravitational thing. Objects in motion tend to turn toward it, that sort of deal.`,
+      `I tried to describe it to someone once and gave up about thirty seconds in. Some things just don't translate.`,
+      `But this much I know: whatever mood I walked in with, your smile resets the whole thing. Every time. Without fail. That's not nothing. That's actually everything.`
+    ]
+  },
+  {
+    tag: "Future",
+    title: "Places We'll Go",
+    subtitle: "A list that keeps growing",
+    date: "Someday, together",
+    coverGradient: "linear-gradient(135deg, #1a4a3a 0%, #4a9a7a 100%)",
+    emoji: "🌍",
+    content: [
+      `I have a running list in my head. A café in a city we've never been to. A road with no specific destination. A morning where we have absolutely nowhere to be and nothing to do except just be.`,
+      `I think about the version of us two years from now, laughing about something we can't predict yet. I think we'll be good at life together.`,
+      `I don't need the whole map figured out. I just need you in the passenger seat, probably in charge of the music, arguing about which direction is north.`
+    ]
+  },
+  {
+    tag: "Memory",
+    title: "That Random Call",
+    subtitle: "The one that went until 3am",
+    date: "A night I still think about",
+    coverGradient: "linear-gradient(135deg, #3a1a5a 0%, #7a4a9a 100%)",
+    emoji: "🌙",
+    content: [
+      `It started as a five-minute call. You know how it goes. Then one hour became two became we-should-probably-sleep-but-neither-of-us-actually-wants-to.`,
+      `We talked about everything and nothing. At some point I was lying on the floor staring at the ceiling just listening to you think out loud. It was one of my favourite nights.`,
+      `I saved nothing from it — no screenshots, no recordings. It lives only in this quiet corner of my memory, exactly the way it happened. Perfectly imperfect and completely ours.`
+    ]
+  },
+  {
+    tag: "Letter",
+    title: "On the Hard Days",
+    subtitle: "Read this when you need it",
+    date: "For whenever",
+    coverGradient: "linear-gradient(135deg, #4a3020 0%, #9a6040 100%)",
+    emoji: "🕯️",
+    content: [
+      `If you're reading this on a hard day — first of all, I'm sorry it's hard. You don't have to be okay right now. You're allowed to be exactly wherever you are.`,
+      `But I want you to know: you have survived every single difficult day so far. Every single one. That is not a small thing. That is a deeply impressive thing.`,
+      `And on the other side of whatever this is, I'll be there. Not with solutions. Just with presence. Just with the kind of quiet that says — I've got you. Take your time.`
+    ]
+  },
+];
+
+// ════════════════════════════════════
+// ENGINE (no need to edit below here)
+// ════════════════════════════════════
+
+// Apply config
+document.getElementById('welcome-name').textContent = CONFIG.herName;
+
+// Password
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPassword();
+});
+
+function checkPassword() {
+  const val = document.getElementById('pw-input').value.trim().toLowerCase();
+  const err = document.getElementById('pw-error');
+  if (val === CONFIG.password.toLowerCase()) {
+    document.getElementById('pw-input').style.borderColor = 'rgba(100,200,100,0.5)';
+    setTimeout(() => showPage('page-welcome'), 400);
+  } else {
+    err.classList.add('show');
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').style.borderColor = 'rgba(181,85,106,0.7)';
+    setTimeout(() => { err.classList.remove('show'); document.getElementById('pw-input').style.borderColor = ''; }, 2500);
+  }
+}
+
+// Page navigation
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function showLibrary() {
+  renderBooks();
+  showPage('page-library');
+}
+
+// Render book cards
+function renderBooks() {
+  const grid = document.getElementById('books-grid');
+  grid.innerHTML = '';
+  books.forEach((book, i) => {
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    card.style.animationDelay = (i * 0.08) + 's';
+    card.innerHTML = `
+      <div class="book-cover" style="background:${book.coverGradient}">
+        <div class="book-spine"></div>
+        <div class="book-emoji-cover">
+          <span class="book-emoji">${book.emoji}</span>
+          <span class="book-cover-title">${book.title}</span>
+        </div>
+        <div class="book-cover-overlay"></div>
+        <span class="book-tag">${book.tag}</span>
+      </div>
+      <div class="book-info">
+        <div class="book-info-title">${book.title}</div>
+        <div class="book-info-sub">${book.subtitle}</div>
+      </div>
+    `;
+    card.addEventListener('click', () => openBook(i));
+    grid.appendChild(card);
+  });
+}
+
+// Open letter
+function openBook(i) {
+  const b = books[i];
+  document.getElementById('letter-tag').textContent = b.tag;
+  document.getElementById('letter-title').textContent = b.title;
+  document.getElementById('letter-date').textContent = b.date;
+  document.getElementById('letter-sig').textContent = '— ' + CONFIG.yourName;
+  const body = document.getElementById('letter-body');
+  body.innerHTML = b.content.map(p => `<p>${p}</p>`).join('');
+  showPage('page-letter');
+}
+
+// Miss me modal
+function openMissModal() {
+  const msgs = CONFIG.missMessages;
+  const msg = msgs[Math.floor(Math.random() * msgs.length)];
+  document.getElementById('miss-msg').innerHTML = msg.replace(/\n/g, '<br>');
+  document.getElementById('miss-modal').classList.add('open');
+  spawnHearts();
+}
+
+function closeMissModal() {
+  document.getElementById('miss-modal').classList.remove('open');
+}
+
+function spawnHearts() {
+  const emojis = ['💗','💕','💖','✨','🌸','💝'];
+  for (let i = 0; i < 12; i++) {
+    setTimeout(() => {
+      const h = document.createElement('div');
+      h.className = 'heart-particle';
+      h.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      h.style.left = Math.random() * 100 + 'vw';
+      h.style.top = Math.random() * 60 + 20 + 'vh';
+      h.style.animationDuration = (2 + Math.random() * 2) + 's';
+      document.body.appendChild(h);
+      setTimeout(() => h.remove(), 4000);
+    }, i * 80);
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('miss-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeMissModal();
+});
+
+// Floating petals on password page
+function spawnPetals() {
+  const colors = ['rgba(181,85,106,0.5)','rgba(212,168,67,0.4)','rgba(212,184,150,0.4)'];
+  for (let i = 0; i < 18; i++) {
+    const p = document.createElement('div');
+    p.className = 'petal';
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+    p.style.animationDuration = (6 + Math.random() * 8) + 's';
+    p.style.animationDelay = (Math.random() * 8) + 's';
+    p.style.width = (4 + Math.random() * 6) + 'px';
+    p.style.height = (7 + Math.random() * 8) + 'px';
+    document.getElementById('page-password').appendChild(p);
+  }
+}
+spawnPetals();
+</script>
+</body>
+</html>
